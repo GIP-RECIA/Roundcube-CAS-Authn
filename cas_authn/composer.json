@@ -3,6 +3,7 @@
     "type": "roundcube-plugin",
     "description": "CAS Authentication plugin for Roundcube",
     "license": "GPL-3.0-or-later",
+    "version": "1.0",
     "require": {
         "php": ">=8.1",
         "apereo/phpcas": "^1.6.2"
