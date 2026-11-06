@@ -398,9 +398,16 @@ class cas_authn extends rcube_plugin
     {
         $s = ($_SERVER['HTTPS'] == 'on') ? 's' : '';
         $protocol = $this->strleft(strtolower($_SERVER['SERVER_PROTOCOL']), '/') . $s;
-        $port = (($_SERVER['SERVER_PORT'] == '80' && $_SERVER['HTTPS'] != 'on') ||
-            ($_SERVER['SERVER_PORT'] == '443' && $_SERVER['HTTPS'] == 'on')) ?
-            '' : (':' . $_SERVER['SERVER_PORT']);
+
+        /* Derrière un reverse proxy (Lando, load balancer...), SERVER_PORT
+        * reflète le port interne, pas le port public - on se fie à
+        * X-Forwarded-Port quand il est présent (non validé contre une
+        * whitelist d'IP de proxy, comme le $_SERVER['HTTPS'] ci-dessus).
+        */
+
+        $forwarded_port = $_SERVER['HTTP_X_FORWARDED_PORT'] ?? $_SERVER['SERVER_PORT'];
+        $standard_port = $s == 's' ? '443' : '80';
+        $port = ($forwarded_port == $standard_port) ? '' : (':' . $forwarded_port);
         $path = $this->strleft($_SERVER['REQUEST_URI'], '?');
         $parsed_params = '';
         $delm = '?';
