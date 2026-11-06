@@ -98,7 +98,7 @@ class cas_authn extends rcube_plugin
 
             // Look for _url GET variable and update FixedServiceURL if present to enable deep linking.
             $query = array();
-            if ($url = rcube_utils::get_input_value('_url', RCUBE_INPUT_GET)) {
+            if ($url = rcube_utils::get_input_value('_url', rcube_utils::INPUT_GET)) {
                 phpCAS::setFixedServiceURL($this->generate_url(array('action' => 'caslogin', '_url' => $url)));
                 parse_str($url, $query);
             }
