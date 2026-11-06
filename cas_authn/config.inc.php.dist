@@ -71,6 +71,6 @@ $rcmail_config['cas_login_url'] = '';
 // CAS service logout URL.
 $rcmail_config['cas_logout_url'] = '';
 
-// phpCAS library path
-$rcmail_config['cas_lib_path'] = '';
+// phpCAS is now loaded via Composer (vendor/autoload.php) - cas_lib_path
+// is no longer used.
 ?>

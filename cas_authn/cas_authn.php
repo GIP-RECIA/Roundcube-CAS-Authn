@@ -311,7 +311,7 @@ class cas_authn extends rcube_plugin
             $cfg = rcmail::get_instance()->config->all();
 
             // include phpCAS
-            require_once($cfg["cas_lib_path"]);
+            require_once __DIR__ . '/vendor/autoload.php';
 
 
             // Uncomment the following line for phpCAS call tracing, helpful for debugging.
@@ -322,7 +322,7 @@ class cas_authn extends rcube_plugin
             // initialize CAS client
             if ($cfg['cas_proxy']) {
                 // Manage the session only the first time
-                phpCAS::proxy(CAS_VERSION_2_0, $cfg['cas_hostname'], $cfg['cas_port'], $cfg['cas_uri'], !isset($_SESSION['session_inited']));
+                phpCAS::proxy(CAS_VERSION_2_0, $cfg['cas_hostname'], $cfg['cas_port'], $cfg['cas_uri'], 'https://' . $cfg['cas_webmail_server_name'], false, $RCMAIL->session);
 
                 // set URL for PGT callback
                 phpCAS::setFixedCallbackURL($this->generate_url(array('action' => 'pgtcallback')));
@@ -331,11 +331,16 @@ class cas_authn extends rcube_plugin
                 phpCAS::setPGTStorageFile($cfg['cas_pgt_dir']);
             } else {
                 // Manage the session only the first time
-                phpCAS::client(CAS_VERSION_2_0, $cfg['cas_hostname'], $cfg['cas_port'], $cfg['cas_uri'], !isset($_SESSION['session_inited']));
+                phpCAS::client(CAS_VERSION_2_0, $cfg['cas_hostname'], $cfg['cas_port'], $cfg['cas_uri'], 'https://' . $cfg['cas_webmail_server_name'], false, $RCMAIL->session);
             }
 
             // SLO callback
-            phpCAS::setPostAuthenticateCallback("handleCasLogin", $old_session);
+            phpCAS::setPostAuthenticateCallback(function ($ticket) use ($old_session) {
+                if (!isset($_SESSION['session_inited'])) {
+                    $_SESSION = array_merge($_SESSION, $old_session);
+                    $_SESSION['session_inited'] = true;
+                }
+            });
             phpCAS::setSingleSignoutCallback(array($this, "handleSingleLogout"));
 
             // set service URL for authorization with CAS server
