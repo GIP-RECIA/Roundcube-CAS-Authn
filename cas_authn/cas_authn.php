@@ -54,89 +54,114 @@ class cas_authn extends rcube_plugin
      * @param array $args arguments from rcmail
      * @return array modified arguments
      */
-    function startup($args)
+
+    function startup(array $args): array
     {
-        $RCMAIL = rcmail::get_instance();
-        $cfg = rcmail::get_instance()->config->all();
-        // intercept PGT callback action from CAS server
         if ($args['action'] == 'pgtcallback') {
-
-            // initialize CAS client
-            $this->cas_init();
-
-            // retrieve and store PGT if present
-            try{
-                phpCAS::forceAuthentication();
-            }catch(Exception $e){}
-
-            // end script - once the PGT is stored we don't need to do anything else.
-            exit;
-        }
-
-        // intercept logout action
-        // We unfortunately cannot use the logout_after plugin hook because it is
-        // executed after session is destroyed
-        else if ($args['task'] == 'logout') {
-            // initialize CAS client
-            $this->cas_init();
-
-            // Redirect to CAS logout action if user is logged in to CAS.
-            // Also, do the normal Roundcube logout actions.
-            if (phpCAS::isSessionAuthenticated()) {
-                $RCMAIL = rcmail::get_instance();
-                $RCMAIL->logout_actions();
-                $RCMAIL->kill_session();
-                $RCMAIL->plugins->exec_hook('logout_after', $userdata);
-                phpCAS::logout();
-                exit;
-            }
-
-        } // intercept CAS login
-        else if ($args['action'] == 'caslogin') {
-            // initialize CAS client
-            $this->cas_init();
-
-            // Look for _url GET variable and update FixedServiceURL if present to enable deep linking.
-            $query = array();
-            if ($url = rcube_utils::get_input_value('_url', rcube_utils::INPUT_GET)) {
-                phpCAS::setFixedServiceURL($this->generate_url(array('action' => 'caslogin', '_url' => $url)));
-                parse_str($url, $query);
-            }
-
-            // Force the user to log in to CAS, using a redirect if necessary.
-            phpCAS::forceAuthentication();
-
-            // If control reaches this point, user is authenticated to CAS.
-            $user = phpCAS::getUser();
-            $pass = '';
-            // retrieve credentials, either a Proxy Ticket or 'masteruser' password
-            if ($cfg['cas_proxy']) {
-                $_SESSION['cas_pt'][php_uname('n')] = phpCAS::retrievePT($cfg['cas_imap_name'], $err_code, $output);
-                $pass = $_SESSION['cas_pt'][php_uname('n')];
-            } else {
-                $pass = $cfg['cas_imap_password'];
-            }
-
-            // Do Roundcube login actions
-            $RCMAIL->login($user, $pass, $RCMAIL->autoselect_host());
-            $RCMAIL->session->remove('temp');
-            // We don't change the session id which is the CAS login ST.
-            $RCMAIL->session->set_auth_cookie();
-
-            // log successful login
-            $RCMAIL->log_login();
-
-            // allow plugins to control the redirect url after login success
-            $redir = $RCMAIL->plugins->exec_hook('login_after', $query + array('_task' => 'mail'));
-            unset($redir['abort'], $redir['_err']);
-
-            // send redirect, otherwise control will reach the mail display and fail because the 
-            // IMAP session was already started by $RCMAIL->login()
-            $RCMAIL->output->redirect($redir);
+            $this->handlePgtCallback();
+        } elseif ($args['task'] == 'logout') {
+            $this->handleLogout();
+        } elseif ($args['action'] == 'caslogin') {
+            $this->handleCasLogin();
         }
 
         return $args;
     }
+
+    /**
+     * Intercept logout action.
+     * We unfortunately cannot use the logout_after plugin hook because it is
+     * executed after session is destroyed.
+     */
+    private function handleLogout(): void
+    {
+        $this->cas_init();
+
+        if (!phpCAS::isSessionAuthenticated()) {
+            return;
+        }
+
+        $RCMAIL = rcmail::get_instance();
+        $RCMAIL->logout_actions();
+        $RCMAIL->kill_session();
+        $RCMAIL->plugins->exec_hook('logout_after', $userdata);
+        phpCAS::logout();
+        exit;
+    }
+
+    /**
+     * Intercept PGT callback action from CAS server.
+     * Stores the PGT if present, then ends the script - nothing else to do.
+     */
+    private function handlePgtCallback(): void
+    {
+        $this->cas_init();
+
+        try {
+            phpCAS::forceAuthentication();
+        } catch (Exception $e) {
+        }
+
+        exit;
+    }
+
+    /**
+     * Intercept CAS login: force CAS authentication, then log the user
+     * into Roundcube and redirect to the mail task.
+     */
+    private function handleCasLogin(): void
+    {
+        $RCMAIL = rcmail::get_instance();
+        $cfg = $RCMAIL->config->all();
+
+        $this->cas_init();
+
+        // Look for _url GET variable and update FixedServiceURL if present to enable deep linking.
+        $query = array();
+        if ($url = rcube_utils::get_input_value('_url', rcube_utils::INPUT_GET)) {
+            phpCAS::setFixedServiceURL($this->generate_url(array('action' => 'caslogin', '_url' => $url)));
+        }
+
+        // Force the user to log in to CAS, using a redirect if necessary.
+        phpCAS::forceAuthentication();
+
+        // If control reaches this point, user is authenticated to CAS.
+        $user = phpCAS::getUser();
+        $pass = $this->resolveImapPassword($cfg);
+
+        // Do Roundcube login actions
+        $RCMAIL->login($user, $pass, $RCMAIL->autoselect_host());
+        $RCMAIL->session->remove('temp');
+        // We don't change the session id which is the CAS login ST.
+        $RCMAIL->session->set_auth_cookie();
+
+        // log successful login
+        $RCMAIL->log_login();
+
+        // allow plugins to control the redirect url after login success
+        $redir = $RCMAIL->plugins->exec_hook('login_after', $query + array('_task' => 'mail'));
+        unset($redir['abort'], $redir['_err']);
+
+        // send redirect, otherwise control will reach the mail display and fail because the
+        // IMAP session was already started by $RCMAIL->login()
+        $RCMAIL->output->redirect($redir);
+    }
+
+    /**
+     * Retrieve the password to authenticate against the IMAP backend:
+     * either a Proxy Ticket (proxy mode) or the configured 'masteruser' password.
+     */
+    private function resolveImapPassword(array $cfg) : string
+    {
+        if (!$cfg['cas_proxy']) {
+            return $cfg['cas_imap_password'];
+        }
+
+        $_SESSION['cas_pt'][php_uname('n')] = phpCAS::retrievePT($cfg['cas_imap_name'], $err_code, $output);
+
+        return $_SESSION['cas_pt'][php_uname('n')];
+    }
+
 
     /**
      * Inject IMAP authentication credentials
