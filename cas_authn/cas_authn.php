@@ -20,6 +20,7 @@
  * @contributor Pierre Lejeune (pierre.lejeune@recia.fr)
  */
 
+use CasAuthn\CasClientInitializer;
 class cas_authn extends rcube_plugin
 {
 
@@ -320,91 +321,52 @@ class cas_authn extends rcube_plugin
      * Initialize CAS client
      *
      */
-    private function cas_init()
+    private function cas_init(): void
     {
-        if (!$this->cas_inited) {
-            $RCMAIL = rcmail::get_instance();
+        require_once __DIR__ . '/vendor/autoload.php';
+        if ($this->cas_inited) {
+            return;
+        }
 
-            $old_session = $_SESSION;
+        $old_session = $_SESSION;
 
+        if (!isset($_SESSION['session_inited'])) {
+            // If the session isn't 'inited' by CAS
+            // We destroy the session to the CAS client be able to init it
+            session_destroy();
+        }
+
+        $RCMAIL = rcmail::get_instance();
+        $cfg = $RCMAIL->config->all();
+
+        $postAuthenticateCallback = function ($ticket) use ($old_session) {
             if (!isset($_SESSION['session_inited'])) {
-                // If the session isn't 'inited' by CAS
-                // We destroy the session to the CAS client be able to init it
-                session_destroy();
-            }
-
-            $cfg = rcmail::get_instance()->config->all();
-
-            // include phpCAS
-            require_once __DIR__ . '/vendor/autoload.php';
-
-
-            // Uncomment the following line for phpCAS call tracing, helpful for debugging.
-            if ($cfg['cas_debug']) {
-                phpCAS::setDebug($cfg['cas_debug_file']);
-            }
-
-            // initialize CAS client
-            if ($cfg['cas_proxy']) {
-                // Manage the session only the first time
-                phpCAS::proxy(CAS_VERSION_2_0, $cfg['cas_hostname'], $cfg['cas_port'], $cfg['cas_uri'], 'https://' . $cfg['cas_webmail_server_name'], false, $RCMAIL->session);
-
-                // set URL for PGT callback
-                phpCAS::setFixedCallbackURL($this->generate_url(array('action' => 'pgtcallback')));
-
-                // set PGT storage
-                phpCAS::setPGTStorageFile($cfg['cas_pgt_dir']);
-            } else {
-                // Manage the session only the first time
-                phpCAS::client(CAS_VERSION_2_0, $cfg['cas_hostname'], $cfg['cas_port'], $cfg['cas_uri'], 'https://' . $cfg['cas_webmail_server_name'], false, $RCMAIL->session);
-            }
-
-            // SLO callback
-            phpCAS::setPostAuthenticateCallback(function ($ticket) use ($old_session) {
-                if (!isset($_SESSION['session_inited'])) {
-                    $_SESSION = array_merge($_SESSION, $old_session);
-                    $_SESSION['session_inited'] = true;
-                }
-            });
-            phpCAS::setSingleSignoutCallback(array($this, "handleSingleLogout"));
-
-            // set service URL for authorization with CAS server
-            phpCAS::setFixedServiceURL($this->generate_url(array('action' => 'caslogin')));
-
-            // Handle SignleLogout
-            if(empty($cfg["cas_clients"])){
-                phpCAS::handleLogoutRequests(true);
-            }else{
-                phpCAS::handleLogoutRequests(true, $cfg["cas_clients"]);
-            }
-            if(is_null($_SESSION)){
-                rcmail::kill_session();
-            }
-
-            // set SSL validation for the CAS server
-            if ($cfg['cas_validation'] == 'self') {
-                phpCAS::setCasServerCert($cfg['cas_cert']);
-            } else if ($cfg['cas_validation'] == 'ca') {
-                phpCAS::setCasServerCACert($cfg['cas_cert']);
-            } else {
-                phpCAS::setNoCasServerValidation();
-            }
-
-            // set login and logout URLs of the CAS server
-            phpCAS::setServerLoginURL($cfg['cas_login_url']);
-            phpCAS::setServerLogoutURL($cfg['cas_logout_url']);
-
-            if (!isset($_SESSION['session_inited'])) {
-                // If the session isn't 'inited' by CAS
-                // we keep the last session
                 $_SESSION = array_merge($_SESSION, $old_session);
                 $_SESSION['session_inited'] = true;
             }
+        };
 
-            phpCAS::forceAuthentication();
+        (new CasClientInitializer($cfg, $RCMAIL->session))->initialize(
+            $this->generate_url(array('action' => 'caslogin')),
+            $this->generate_url(array('action' => 'pgtcallback')),
+            $postAuthenticateCallback,
+            array($this, 'handleSingleLogout')
+        );
 
-            $this->cas_inited = true;
+        if (is_null($_SESSION)) {
+            rcmail::get_instance()->kill_session();
         }
+
+        if (!isset($_SESSION['session_inited'])) {
+            // If the session isn't 'inited' by CAS
+            // we keep the last session
+            $_SESSION = array_merge($_SESSION, $old_session);
+            $_SESSION['session_inited'] = true;
+        }
+
+        phpCAS::forceAuthentication();
+
+        $this->cas_inited = true;
     }
 
     /**

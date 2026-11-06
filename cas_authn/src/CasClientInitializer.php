@@ -1,7 +1,8 @@
 <?php
 
-namespace cas;
+namespace CasAuthn;
 use phpCAS;
+use SessionHandlerInterface;
 
 /**
  * Configures the phpCAS client for cas_authn: server connection, proxy vs
@@ -25,7 +26,6 @@ class CasClientInitializer
         callable $singleSignoutCallback
     ): void
     {
-        require_once __DIR__ . '/vendor/autoload.php';
 
         if ($this->cfg['cas_debug']) {
             phpCAS::setDebug($this->cfg['cas_debug_file']);
