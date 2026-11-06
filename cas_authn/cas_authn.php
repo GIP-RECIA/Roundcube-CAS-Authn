@@ -132,8 +132,7 @@ class cas_authn extends rcube_plugin
 
             // send redirect, otherwise control will reach the mail display and fail because the 
             // IMAP session was already started by $RCMAIL->login()
-            global $OUTPUT;
-            $OUTPUT->redirect($redir);
+            $RCMAIL->output->redirect($redir);
         }
 
         return $args;
@@ -277,8 +276,7 @@ class cas_authn extends rcube_plugin
 
         // Force CAS authn?
         if ($cfg["cas_force"]) {
-            global $OUTPUT;
-            $OUTPUT->redirect(array('action' => 'caslogin'));
+            $RCMAIL->output->redirect(array('action' => 'caslogin'));
         }
 
         $caslogin_content = html::div(array(
