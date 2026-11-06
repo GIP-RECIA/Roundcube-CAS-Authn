@@ -1,0 +1,10 @@
+{
+    "name": "gip-recia/cas_authn",
+    "type": "roundcube-plugin",
+    "description": "CAS Authentication plugin for Roundcube",
+    "license": "GPL-3.0-or-later",
+    "require": {
+        "php": ">=8.1",
+        "apereo/phpcas": "^1.6.2"
+    }
+}
