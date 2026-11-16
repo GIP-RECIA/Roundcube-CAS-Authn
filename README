@@ -18,9 +18,13 @@ This plugin has been tested and works with the following:
  - up-imapproxy 1.2.7 (http://www.imapproxy.org)
  - Dovecot 2.0.13 (http://dovecot.org)
 
-Setup is very similar to most Roundcube plugins. Copy cas_authn to your 
+Setup is very similar to most Roundcube plugins. Copy cas_authn to your
 Roundcube plugin directory. Then, copy config.inc.php.dist to config.inc.php,
-edit for your environment, and activate the plugin. 
+edit for your environment, and activate the plugin.
+
+For local development against the Lando environment (mock CAS server, no
+real RECIA CAS/LDAP needed), copy config.inc.php.lando to config.inc.php
+instead - it's ready to use as-is.
 
 Some things to be aware of:
 
