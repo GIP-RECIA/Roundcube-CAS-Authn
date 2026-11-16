@@ -85,7 +85,7 @@ class cas_authn extends rcube_plugin
         $RCMAIL = rcmail::get_instance();
         $RCMAIL->logout_actions();
         $RCMAIL->kill_session();
-        $RCMAIL->plugins->exec_hook('logout_after', $userdata);
+        $RCMAIL->plugins->exec_hook('logout_after', []);
         phpCAS::logout();
         exit;
     }
@@ -323,46 +323,19 @@ class cas_authn extends rcube_plugin
      */
     private function cas_init(): void
     {
-        require_once __DIR__ . '/vendor/autoload.php';
         if ($this->cas_inited) {
             return;
-        }
-
-        $old_session = $_SESSION;
-
-        if (!isset($_SESSION['session_inited'])) {
-            // If the session isn't 'inited' by CAS
-            // We destroy the session to the CAS client be able to init it
-            session_destroy();
         }
 
         $RCMAIL = rcmail::get_instance();
         $cfg = $RCMAIL->config->all();
 
-        $postAuthenticateCallback = function ($ticket) use ($old_session) {
-            if (!isset($_SESSION['session_inited'])) {
-                $_SESSION = array_merge($_SESSION, $old_session);
-                $_SESSION['session_inited'] = true;
-            }
-        };
-
         (new CasClientInitializer($cfg, $RCMAIL->session))->initialize(
             $this->generate_url(array('action' => 'caslogin')),
             $this->generate_url(array('action' => 'pgtcallback')),
-            $postAuthenticateCallback,
+            function ($ticket) {},
             array($this, 'handleSingleLogout')
         );
-
-        if (is_null($_SESSION)) {
-            rcmail::get_instance()->kill_session();
-        }
-
-        if (!isset($_SESSION['session_inited'])) {
-            // If the session isn't 'inited' by CAS
-            // we keep the last session
-            $_SESSION = array_merge($_SESSION, $old_session);
-            $_SESSION['session_inited'] = true;
-        }
 
         phpCAS::forceAuthentication();
 
