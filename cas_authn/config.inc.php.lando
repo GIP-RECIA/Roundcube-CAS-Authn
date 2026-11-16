@@ -1,0 +1,27 @@
+<?php
+/**
+ * CAS Authentication configuration - ready-to-use values for the local
+ * Lando dev environment (mock CAS server, no real RECIA CAS/LDAP needed).
+ *
+ * Copy this file to config.inc.php to use it - see the main README.
+ */
+$config = [
+    'cas_force' => false,
+    'cas_proxy' => false,
+    'cas_debug' => true,
+    'cas_debug_file' => '/app/logs/cas_debug.log',
+    'cas_pgt_dir' => '/tmp',
+    'cas_imap_name' => 'name_of_imap_service',
+    'cas_smtp_name' => 'name_of_imap_service',
+    'cas_imap_caching' => true,
+    'cas_imap_pt_expiration_time' => 300,
+    'cas_imap_password' => 'anything',
+    'cas_uri' => '',
+    'cas_validation' => '',
+    'cas_cert' => '/path/to/cert/file',
+    'cas_hostname' => 'mock-cas.roundcubemail.internal',
+    'cas_port' => 8443,
+    'cas_login_url' => 'http://cas-mock.lndo.site/login',
+    'cas_logout_url' => 'http://cas-mock.lndo.site/logout',
+    'imap_host' => 'mailhost:3143',
+];
