@@ -40,7 +40,7 @@ class CasClientInitializer
         $this->initializeLogoutHandling();
         $this->initializeSslValidation();
 
-        phpCAS::setServerLoginURL($this->cfg['cas_login_url']);
+        phpCAS::setServerLoginURL($this->cfg['cas_login_url'] . '?service=' . urlencode($serviceUrl));
         phpCAS::setServerLogoutURL($this->cfg['cas_logout_url']);
     }
 
