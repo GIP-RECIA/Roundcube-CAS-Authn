@@ -184,7 +184,7 @@ class cas_authn extends rcube_plugin
 
             // check expiration of PT caching time
             $ptExpired = false;
-            if (time() - $_SESSION['cas_pt_time'][php_uname('n')] > $cfg['cas_imap_pt_expiration_time']) {
+            if (time() - ($_SESSION['cas_pt_time'][php_uname('n')] ?? 0) > $cfg['cas_imap_pt_expiration_time']) {
                 // Clear PT caching if expired
                 $_SESSION['cas_pt'][php_uname('n')] = false;
                 $ptExpired = true;
