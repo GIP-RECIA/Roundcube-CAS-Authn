@@ -384,11 +384,7 @@ class cas_authn extends rcube_plugin
             }
         }
         $cfg = rcmail::get_instance()->config->all();
-        if ($cfg['cas_webmail_server_name']) {
-            $serverName = $cfg['cas_webmail_server_name'];
-        } else {
-            $serverName = $_SERVER['SERVER_NAME'];
-        }
+        $serverName = $cfg['cas_webmail_server_name'] ?: $_SERVER['HTTP_HOST'];
         return $protocol . '://' . $serverName . $port . $path . $parsed_params;
     }
 
