@@ -46,7 +46,7 @@ class CasClientInitializer
 
     private function initializeClient(string $pgtCallbackUrl): void
     {
-        $serviceBaseUrl = 'https://' . $this->cfg['cas_webmail_server_name'];
+        $serviceBaseUrl = 'https://' . ($this->cfg['cas_webmail_server_name'] ?: $_SERVER['HTTP_HOST']);
 
         if ($this->cfg['cas_proxy']) {
             phpCAS::proxy(
