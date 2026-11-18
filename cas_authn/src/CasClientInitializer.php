@@ -23,7 +23,8 @@ class CasClientInitializer
         string   $serviceUrl,
         string   $pgtCallbackUrl,
         callable $postAuthenticateCallback,
-        callable $singleSignoutCallback
+        callable $singleSignoutCallback,
+        bool     $changeSessionID = false
     ): void
     {
 
@@ -31,7 +32,7 @@ class CasClientInitializer
             phpCAS::setDebug($this->cfg['cas_debug_file']);
         }
 
-        $this->initializeClient($pgtCallbackUrl);
+        $this->initializeClient($pgtCallbackUrl, $changeSessionID);
 
         phpCAS::setPostAuthenticateCallback($postAuthenticateCallback);
         phpCAS::setSingleSignoutCallback($singleSignoutCallback);
@@ -44,7 +45,7 @@ class CasClientInitializer
         phpCAS::setServerLogoutURL($this->cfg['cas_logout_url']);
     }
 
-    private function initializeClient(string $pgtCallbackUrl): void
+    private function initializeClient(string $pgtCallbackUrl, bool $changeSessionID): void
     {
         $serviceBaseUrl = 'https://' . ($this->cfg['cas_webmail_server_name'] ?: $_SERVER['HTTP_HOST']);
 
@@ -55,7 +56,7 @@ class CasClientInitializer
                 $this->cfg['cas_port'],
                 $this->cfg['cas_uri'],
                 $serviceBaseUrl,
-                false,
+                $changeSessionID,
                 $this->sessionHandler
             );
             phpCAS::setFixedCallbackURL($pgtCallbackUrl);
@@ -67,7 +68,7 @@ class CasClientInitializer
                 $this->cfg['cas_port'],
                 $this->cfg['cas_uri'],
                 $serviceBaseUrl,
-                false,
+                $changeSessionID,
                 $this->sessionHandler
             );
         }

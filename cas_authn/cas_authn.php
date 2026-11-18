@@ -64,6 +64,8 @@ class cas_authn extends rcube_plugin
             $this->handleLogout();
         } elseif ($args['action'] == 'caslogin') {
             $this->handleCasLogin();
+        } elseif (!empty($_POST['logoutRequest'])) {
+            $this->cas_init(true);
         }
 
         return $args;
@@ -115,7 +117,14 @@ class cas_authn extends rcube_plugin
         $RCMAIL = rcmail::get_instance();
         $cfg = $RCMAIL->config->all();
 
-        $this->cas_init();
+        // changeSessionID=true only here, at the actual login moment: phpCAS
+        // renames the (already-shared) Roundcube session to a deterministic
+        // hash of the ticket, which is what later lets a back-channel SLO
+        // request find and destroy the right session. Every other cas_init()
+        // call site (imap/smtp/sieve connect, logout, pgt callback) keeps the
+        // default false - renaming on every one of those would be wrong, not
+        // just once at login.
+        $this->cas_init(true);
 
         // Look for _url GET variable and update FixedServiceURL if present to enable deep linking.
         $query = array();
@@ -321,7 +330,7 @@ class cas_authn extends rcube_plugin
      * Initialize CAS client
      *
      */
-    private function cas_init(): void
+    private function cas_init(bool $changeSessionID = false): void
     {
         if ($this->cas_inited) {
             return;
@@ -334,7 +343,8 @@ class cas_authn extends rcube_plugin
             $this->generate_url(array('action' => 'caslogin')),
             $this->generate_url(array('action' => 'pgtcallback')),
             function ($ticket) {},
-            array($this, 'handleSingleLogout')
+            array($this, 'handleSingleLogout'),
+            $changeSessionID
         );
 
         phpCAS::forceAuthentication();
